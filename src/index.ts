@@ -1,37 +1,28 @@
 import express from "express";
 import { createServer } from "http";
+import { join } from "node:path";
 import { Server } from "socket.io";
 
 const app = express();
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  /* 任意でオプション設定可 */
-});
+const server = createServer(app);
+const io = new Server(server);
 
-// 通常のHTTP GETリクエスト対応
 app.get("/", (req, res) => {
-  res.send("Hello from Express + Socket.IO + TypeScript!");
+  res.sendFile(join(__dirname, "index.html"));
 });
 
-// Socket.IO 接続イベント
 io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
-
-  // クライアントからのメッセージを受信
-  socket.on("chatMessage", (msg) => {
-    console.log(`Message from ${socket.id}: ${msg}`);
-    // 全クライアントにメッセージをブロードキャスト
-    io.emit("chatMessage", msg);
+  console.log("a user connected");
+  socket.on("chat message", (msg) => {
+    console.log("message: " + msg);
   });
 
-  // 切断
   socket.on("disconnect", () => {
-    console.log("A user disconnected:", socket.id);
-  });
-});
+    console.log("user disconnected");
+  })
+})
 
-// サーバー起動
 const PORT = 3000;
-httpServer.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+server.listen(PORT, () => {
+  console.log("server running at http://localhost:" + PORT);
+})
