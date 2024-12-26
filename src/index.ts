@@ -5,7 +5,7 @@ import { Server } from "socket.io";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 
-let db: import("sqlite").Database; // グローバルに宣言しておく
+let db: import("sqlite").Database;
 
 (async () => {
   try {
@@ -23,7 +23,6 @@ let db: import("sqlite").Database; // グローバルに宣言しておく
       );
     `);
 
-    // Express & Socket.io の準備
     const app = express();
     const server = createServer(app);
     const io = new Server(server, {
@@ -31,20 +30,24 @@ let db: import("sqlite").Database; // グローバルに宣言しておく
     });
 
     app.get("/", (req, res) => {
-      // __dirname を使う場合、型定義やESモジュール化などに注意
       res.sendFile(join(__dirname, "index.html"));
     });
 
     io.on("connection", async (socket) => {
-      socket.on("chat message", async (msg) => {
+      socket.on("chat message", async (msg, clientOffset, callback) => {
         let result;
         try {
-          result = await db.run("INSERT INTO messages (content) VALUES (?)", msg);
-        } catch (e) {
-          console.error(e);
+          result = await db.run("INSERT INTO messages (content, client_offset) VALUES (?, ?)", msg, clientOffset);
+        } catch (e: any) {
+          if (e.errno === 19 /* SQLITE_CONSTRAINT */) {
+            callback();
+          } else {
+            console.error(e);
+          }
           return;
         }
         io.emit("chat message", msg, result.lastID);
+        callback();
       });
 
       if (!socket.recovered) {
